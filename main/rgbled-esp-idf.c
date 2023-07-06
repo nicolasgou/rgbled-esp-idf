@@ -30,12 +30,12 @@ void app_main(void)
 
     while (1)
     {
-        set_dev_color_mode_rgbled(rgbled_00, led_color_red, dimmed_color );
+        set_dev_color_mode_rgbled(rgbled_00, led_color_red, pulse_color );
         vTaskDelay(10000 / portTICK_PERIOD_MS);
-        set_dev_color_mode_rgbled(rgbled_00, led_color_green, blink_color );
-        vTaskDelay(10000 / portTICK_PERIOD_MS);
-        set_dev_color_mode_rgbled(rgbled_00, led_color_blue, static_color );
-        vTaskDelay(10000 / portTICK_PERIOD_MS);
+        // set_dev_color_mode_rgbled(rgbled_00, led_color_green, blink_color );
+        // vTaskDelay(10000 / portTICK_PERIOD_MS);
+        // set_dev_color_mode_rgbled(rgbled_00, led_color_blue, static_color );
+        // vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
 
 

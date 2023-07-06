@@ -19,7 +19,8 @@
 
 
 typedef enum {
-    led_color_white = 0,
+    led_color_none = 0,
+    led_color_white,
     led_color_red,
     led_color_green,
     led_color_blue,
@@ -30,9 +31,10 @@ typedef enum {
 } led_color_t;
 
 typedef enum {
-    static_color = 0,
-    blink_color,
-    dimmed_color,
+    led_mode_none = 0,
+    led_mode_static,
+    led_mode_blink,
+    led_mode_pulse,
 } led_mode_t;
 
 /**
@@ -46,7 +48,7 @@ typedef struct {
     led_mode_t current_led_mode;
     bool is_setcolor_ft;
     bool is_blink_ft;
-    bool is_dimmed_blink_ft;
+    bool is_pulse_blink_ft;
 } rgbled_t;
 
 
@@ -64,7 +66,7 @@ static void set_color_rgb_led(rgbled_t* dev, led_color_t color);
 
 
 void reset_rgb_led(rgbled_t* dev);
-void reset_dimmed_blink_color_rgb_led (rgbled_t* dev);
+void reset_pulse_blink_color_rgb_led (rgbled_t* dev);
 void reset_blink_color_rgb_led (rgbled_t* dev);
 
 
@@ -73,12 +75,8 @@ static void prvblink_color_rgb_led_task( void * pvParameters );
 static void set_blink_color_rgb_led(rgbled_t* dev, led_color_t color);
 
 
-static void prvdimmed_blink_color_rgb_led_task( void * pvParameters );
+static void prvpulse_blink_color_rgb_led_task( void * pvParameters );
 
-static void set_dimmed_blink_color_rgb_led(rgbled_t* dev, led_color_t color);
-
-
-// void get_state (void);
-// void del_task (void);
+static void set_pulse_blink_color_rgb_led(rgbled_t* dev, led_color_t color);
 
 

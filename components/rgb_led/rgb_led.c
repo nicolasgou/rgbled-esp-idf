@@ -26,10 +26,10 @@
 
 static const char *TAG = "rgb_led";
 
-TaskHandle_t prvblink_color_rgb_led_taskHandle, prvdimmed_blink_color_rgb_led_taskHandle;
-TaskStatus_t prvblink_color_rgb_led_taskDetails,prvdimmed_blink_color_rgb_led_taskDetails;
+TaskHandle_t prvblink_color_rgb_led_taskHandle, prvpulse_blink_color_rgb_led_taskHandle;
+TaskStatus_t prvblink_color_rgb_led_taskDetails,prvpulse_blink_color_rgb_led_taskDetails;
 
-//bool dev->is_setcolor_ft=true, dev->is_blink_ft=true, dev->is_dimmed_blink_ft=true;
+//bool dev->is_setcolor_ft=true, dev->is_blink_ft=true, dev->is_pulse_blink_ft=true;
 
 rgbled_t* initialize_rgb_led(uint8_t rgbLed_data_pin, uint8_t rgbLed_en_pin)
 {
@@ -45,7 +45,7 @@ rgbled_t* initialize_rgb_led(uint8_t rgbLed_data_pin, uint8_t rgbLed_en_pin)
     // dev->current_led_mode = NULL;
     dev->is_setcolor_ft=true; 
     dev->is_blink_ft=true;
-    dev->is_dimmed_blink_ft=true;
+    dev->is_pulse_blink_ft=true;
 
 
 
@@ -101,14 +101,16 @@ void set_dev_color_mode_rgbled (rgbled_t* dev, led_color_t color, led_mode_t mod
     dev->current_led_mode = mode;
 
     switch (mode) {
-        case static_color:
+        case led_mode_static:
             set_color_rgb_led(dev, color);
             break;
-        case blink_color:
+        case led_mode_blink:
             set_blink_color_rgb_led(dev, color);
             break;
-        case dimmed_color:
-            set_dimmed_blink_color_rgb_led(dev, color);
+        case led_mode_pulse:
+            set_pulse_blink_color_rgb_led(dev, color);
+            break;
+        default:
             break;
     }
 }
@@ -171,7 +173,7 @@ static void set_color_rgb_led(rgbled_t* dev, led_color_t color) {
 void reset_rgb_led(rgbled_t* dev) {
     // printf("reset_rgb_led ...dev->is_setcolor_ft: %s\n\n", dev->is_setcolor_ft ? "true" : "false");
     // printf("reset_rgb_led ...dev->is_blink_ft: %s\n\n", dev->is_blink_ft ? "true" : "false");
-    // printf("reset_rgb_led ...dev->is_dimmed_blink_ft: %s\n\n", dev->is_dimmed_blink_ft ? "true" : "false");
+    // printf("reset_rgb_led ...dev->is_pulse_blink_ft: %s\n\n", dev->is_pulse_blink_ft ? "true" : "false");
 
     //gpio_set_level(dev->en_pin, false);
 
@@ -192,11 +194,11 @@ void reset_rgb_led(rgbled_t* dev) {
         // dev->current_led_mode = NULL;
         gpio_set_level(dev->en_pin, false);
     }
-    if (!dev->is_dimmed_blink_ft) {
-        vTaskDelete(prvdimmed_blink_color_rgb_led_taskHandle);
+    if (!dev->is_pulse_blink_ft) {
+        vTaskDelete(prvpulse_blink_color_rgb_led_taskHandle);
         vTaskDelay(100 / portTICK_PERIOD_MS);
-        //printf("reset...dev->is_dimmed_blink_ft\n\n");
-        dev->is_dimmed_blink_ft = true;
+        //printf("reset...dev->is_pulse_blink_ft\n\n");
+        dev->is_pulse_blink_ft = true;
         // dev->current_led_color = NULL;
         // dev->current_led_mode = NULL;
         gpio_set_level(dev->en_pin, false);
@@ -210,7 +212,7 @@ void reset_blink_color_rgb_led (rgbled_t* dev) {
 
 }
 
-void reset_dimmed_blink_color_rgb_led (rgbled_t* dev) {
+void reset_pulse_blink_color_rgb_led (rgbled_t* dev) {
     reset_rgb_led(dev);
 }
 
@@ -273,13 +275,13 @@ static void prvblink_color_rgb_led_task( void * pvParameters ) {
            parameters->dev->pStrip->clear(parameters->dev->pStrip, 50); //Set all LED off to clear all pixels
         }
         blink_led_state = !blink_led_state; //Toggle the LED state
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
 
 
-static void prvdimmed_blink_color_rgb_led_task( void * pvParameters ) {
+static void prvpulse_blink_color_rgb_led_task( void * pvParameters ) {
     TaskParameters *parameters= (TaskParameters *)pvParameters;
     // if ((parameters = malloc (sizeof(TaskParameters))) == NULL)
     //     return;
@@ -287,20 +289,20 @@ static void prvdimmed_blink_color_rgb_led_task( void * pvParameters ) {
     static uint8_t blink_led_state = 0;
     led_color_t color = parameters->led_color;
     
-    static uint8_t dimmed_led_state = 0;
+    static uint8_t pulse_led_state = 0;
     uint16_t multi=10,r=0,g=0,b=0;
 
     switch (color) {
         case led_color_red:
             while (1) {
-                if (!dimmed_led_state) {
+                if (!pulse_led_state) {
                     for (uint16_t i = 0; i < 245; i++) {
                         r=i+multi;
                         parameters->dev->pStrip->set_pixel(parameters->dev->pStrip,0,r,0,0);//red
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);  
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 } else {
                     for (uint16_t i = 255; i > 10; i--) {
                         r=i-multi;
@@ -308,20 +310,20 @@ static void prvdimmed_blink_color_rgb_led_task( void * pvParameters ) {
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);       
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 }
             }
             break;
         case led_color_green:
             while (1) {
-                if (!dimmed_led_state) {
+                if (!pulse_led_state) {
                     for (uint16_t i = 0; i < 245; i++) {
                         g=i+multi;
                         parameters->dev->pStrip->set_pixel(parameters->dev->pStrip,0,0,g,0);//green
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);  
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 } else {
                     for (uint16_t i = 255; i > 10; i--) {
                         g=i-multi;
@@ -329,20 +331,20 @@ static void prvdimmed_blink_color_rgb_led_task( void * pvParameters ) {
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);       
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 }
             }
             break;
         case led_color_blue:
             while (1) {
-                if (!dimmed_led_state) {
+                if (!pulse_led_state) {
                     for (uint16_t i = 0; i < 245; i++) {
                         b=i+multi;
                         parameters->dev->pStrip->set_pixel(parameters->dev->pStrip,0,0,0,b);//blue
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);  
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 } else {
                     for (uint16_t i = 255; i > 10; i--) {
                         b=i-multi;
@@ -350,20 +352,20 @@ static void prvdimmed_blink_color_rgb_led_task( void * pvParameters ) {
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);       
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 }
             }
             break;
         case led_color_yellow:
             while (1) {
-                if (!dimmed_led_state) {
+                if (!pulse_led_state) {
                     for (uint16_t i = 0; i < 245; i++) {
                         r=i+multi; g=i+multi;
                         parameters->dev->pStrip->set_pixel(parameters->dev->pStrip,0,r,g,0);//yellow
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);  
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 } else {
                     for (uint16_t i = 255; i > 10; i--) {
                         r=i-multi; g=i+multi;
@@ -371,13 +373,13 @@ static void prvdimmed_blink_color_rgb_led_task( void * pvParameters ) {
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);       
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 }
             }
             break;
         case led_color_orange:
             while (1) {
-                if (!dimmed_led_state) {
+                if (!pulse_led_state) {
                     for (uint16_t i = 0; i < 245; i++) {
                         r=i+multi;
                         if (i <= 127)
@@ -386,7 +388,7 @@ static void prvdimmed_blink_color_rgb_led_task( void * pvParameters ) {
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);  
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 } else {
                     g=127;
                     for (uint16_t i = 255; i > 10; i--) {
@@ -397,20 +399,20 @@ static void prvdimmed_blink_color_rgb_led_task( void * pvParameters ) {
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);       
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 }
             }
             break;
         case led_color_purple:
             while (1) {
-                if (!dimmed_led_state) {
+                if (!pulse_led_state) {
                     for (uint16_t i = 0; i < 245; i++) {
                         r=i+multi; b=i+multi;
                         parameters->dev->pStrip->set_pixel(parameters->dev->pStrip,0,r,0,b);//purple
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);  
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 } else {
                     for (uint16_t i = 255; i > 10; i--) {
                         r=i-multi; b=i+multi;
@@ -418,20 +420,20 @@ static void prvdimmed_blink_color_rgb_led_task( void * pvParameters ) {
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);       
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 }
             }
             break;
         case led_color_white:
             while (1) {
-                if (!dimmed_led_state) {
+                if (!pulse_led_state) {
                     for (uint16_t i = 0; i < 245; i++) {
                         r=i+multi; g=i+multi; b=i+multi;
                         parameters->dev->pStrip->set_pixel(parameters->dev->pStrip,0,r,g,b);//white
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);  
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 } else {
                     for (uint16_t i = 255; i > 10; i--) {
                         r=i-multi; g=i-multi; b=i-multi;
@@ -439,7 +441,7 @@ static void prvdimmed_blink_color_rgb_led_task( void * pvParameters ) {
                         parameters->dev->pStrip->refresh(parameters->dev->pStrip, 100);
                         vTaskDelay(15 / portTICK_PERIOD_MS);       
                     }
-                    dimmed_led_state = !dimmed_led_state; //Toggle the LED state
+                    pulse_led_state = !pulse_led_state; //Toggle the LED state
                 }
             }
             break;
@@ -468,7 +470,7 @@ static void set_blink_color_rgb_led(rgbled_t* dev, led_color_t color) {
     parameters->dev = dev;
     parameters->led_color = color;
 
-    if (!dev->is_setcolor_ft || !dev->is_blink_ft || !dev->is_dimmed_blink_ft) {
+    if (!dev->is_setcolor_ft || !dev->is_blink_ft || !dev->is_pulse_blink_ft) {
         reset_rgb_led(dev);
         gpio_set_level(dev->en_pin, true);
         xTaskCreate(&prvblink_color_rgb_led_task,                 //Function that implements the task.
@@ -493,7 +495,7 @@ static void set_blink_color_rgb_led(rgbled_t* dev, led_color_t color) {
 
 
 
-static void set_dimmed_blink_color_rgb_led(rgbled_t* dev, led_color_t color) {
+static void set_pulse_blink_color_rgb_led(rgbled_t* dev, led_color_t color) {
     TaskParameters* parameters;
     if ((parameters = malloc (sizeof(TaskParameters))) == NULL)
         return;
@@ -501,25 +503,25 @@ static void set_dimmed_blink_color_rgb_led(rgbled_t* dev, led_color_t color) {
     parameters->dev = dev;
     parameters->led_color = color;
 
-    if (!dev->is_setcolor_ft || !dev->is_blink_ft || !dev->is_dimmed_blink_ft) {
+    if (!dev->is_setcolor_ft || !dev->is_blink_ft || !dev->is_pulse_blink_ft) {
         reset_rgb_led(dev);
         gpio_set_level(dev->en_pin, true);
-        xTaskCreate(&prvdimmed_blink_color_rgb_led_task,                 //Function that implements the task.
-            "prvdimmed_blink_color_rgb_led_task",            //Text name for the task - only used for debugging.
+        xTaskCreate(&prvpulse_blink_color_rgb_led_task,                 //Function that implements the task.
+            "prvpulse_blink_color_rgb_led_task",            //Text name for the task - only used for debugging.
             1024 * 4,                                   //Size of stack (in words, not bytes) to allocate for the task.
             (void *)parameters,                                //Task parameter - not used in this case.
             5,                                          //Task priority, must be between 0 and configMAX_PRIORITIES - 1.
-            &prvdimmed_blink_color_rgb_led_taskHandle);       //Used to pass out a handle to the created task - not used in this case.
-        dev->is_dimmed_blink_ft = false;
+            &prvpulse_blink_color_rgb_led_taskHandle);       //Used to pass out a handle to the created task - not used in this case.
+        dev->is_pulse_blink_ft = false;
     } else {
         gpio_set_level(dev->en_pin, true);
-        xTaskCreate(&prvdimmed_blink_color_rgb_led_task,                 //Function that implements the task.
-                "prvdimmed_blink_color_rgb_led_task",            //Text name for the task - only used for debugging.
+        xTaskCreate(&prvpulse_blink_color_rgb_led_task,                 //Function that implements the task.
+                "prvpulse_blink_color_rgb_led_task",            //Text name for the task - only used for debugging.
                 1024 * 4,                                   //Size of stack (in words, not bytes) to allocate for the task.
                 (void *)parameters,                               //Task parameter - not used in this case.
                 5,                                          //Task priority, must be between 0 and configMAX_PRIORITIES - 1.
-                &prvdimmed_blink_color_rgb_led_taskHandle);       //Used to pass out a handle to the created task - not used in this case.
-        dev->is_dimmed_blink_ft = false;
+                &prvpulse_blink_color_rgb_led_taskHandle);       //Used to pass out a handle to the created task - not used in this case.
+        dev->is_pulse_blink_ft = false;
 
     }
 }
