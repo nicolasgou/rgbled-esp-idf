@@ -13,7 +13,7 @@
 
 #include "esp_log.h"
 
-#include "rgb_led.h"
+#include "srgbled.h"
 #include "led_strip.h"
 
 
